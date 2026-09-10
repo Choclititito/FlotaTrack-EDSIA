@@ -1,7 +1,6 @@
 # FleetTrack — backend
 
-Backend del sistema de monitoreo de flotilla (Reto Final EDSIA 2026): telemetría
-(ubicación, velocidad, combustible), kill switch remoto antirrobo y registro de
+Backend del sistema de monitoreo de flotilla (Reto Final EDSIA 2026): telemetría, kill switch remoto antirrobo y registro de
 carta porte por viaje.
 
 ## Stack
