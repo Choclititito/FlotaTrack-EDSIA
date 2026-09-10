@@ -45,3 +45,39 @@ def truck_status(truck_id: str, db: Session = Depends(get_db)) -> schemas.TruckS
         }
 
     return schemas.TruckStatusOut(truck=truck, latest_reading=latest_out)
+
+
+@router.post("/{truck_id}/kill-switch", response_model=schemas.CommandOut, status_code=201)
+def request_kill_switch(
+    truck_id: str, payload: schemas.KillSwitchRequest, db: Session = Depends(get_db)
+) -> models.Command:
+    """Solicita bloquear/desbloquear el camión. Requiere confirmación explícita.
+
+    Esto solo CREA el comando pendiente — el corte real lo aplica el propio
+    dispositivo cuando detecta que el vehículo está detenido (ver telemetry.py).
+    """
+    if not payload.confirm:
+        raise HTTPException(
+            status_code=400, detail="Se requiere confirmación explícita (confirm=true)"
+        )
+
+    if payload.action not in (models.CommandType.lock.value, models.CommandType.unlock.value):
+        raise HTTPException(status_code=400, detail="action debe ser 'lock' o 'unlock'")
+
+    truck = db.get(models.Truck, truck_id)
+    if truck is None:
+        raise HTTPException(status_code=404, detail="Truck not found")
+
+    # Cualquier comando pendiente anterior de este camión queda cancelado: la
+    # orden más reciente siempre es la que manda, nunca deben competir dos
+    # comandos pendientes por el mismo camión.
+    db.query(models.Command).filter(
+        models.Command.truck_id == truck_id,
+        models.Command.status == models.CommandStatus.pending.value,
+    ).update({"status": models.CommandStatus.cancelled.value})
+
+    command = models.Command(truck_id=truck_id, type=payload.action)
+    db.add(command)
+    db.commit()
+    db.refresh(command)
+    return command
