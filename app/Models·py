@@ -1,0 +1,123 @@
+import enum
+import uuid
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Float, ForeignKey, String
+from sqlalchemy.orm import relationship
+
+from app.database import Base
+
+
+def gen_uuid() -> str:
+    return str(uuid.uuid4())
+
+
+class SecurityState(str, enum.Enum):
+    active = "active"
+    locked = "locked"
+
+
+class CommandType(str, enum.Enum):
+    lock = "lock"
+    unlock = "unlock"
+
+
+class CommandStatus(str, enum.Enum):
+    pending = "pending"
+    applied = "applied"
+    cancelled = "cancelled"
+
+
+class Truck(Base):
+    __tablename__ = "trucks"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    plates = Column(String, unique=True, nullable=False)
+    model = Column(String, nullable=False)
+    capacity_kg = Column(Float, nullable=True)
+    security_state = Column(String, default=SecurityState.active.value, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    telemetry_readings = relationship(
+        "TelemetryReading", back_populates="truck", cascade="all, delete-orphan"
+    )
+    commands = relationship("Command", back_populates="truck", cascade="all, delete-orphan")
+    trips = relationship("Trip", back_populates="truck")
+
+
+class TelemetryReading(Base):
+    __tablename__ = "telemetry_readings"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    truck_id = Column(String, ForeignKey("trucks.id"), nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    speed_kmh = Column(Float, nullable=False)
+    fuel_level_pct = Column(Float, nullable=False)
+    recorded_at = Column(DateTime, default=datetime.utcnow)
+
+    truck = relationship("Truck", back_populates="telemetry_readings")
+
+
+class Command(Base):
+    """Un comando pendiente de aplicar en el dispositivo (p. ej. el kill switch).
+
+    El dispositivo es quien decide CUÁNDO aplicarlo (solo si está detenido) —
+    el servidor únicamente informa que hay un comando en espera.
+    """
+
+    __tablename__ = "commands"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    truck_id = Column(String, ForeignKey("trucks.id"), nullable=False)
+    type = Column(String, nullable=False)  # "lock" | "unlock"
+    status = Column(String, default=CommandStatus.pending.value, nullable=False)
+    requested_at = Column(DateTime, default=datetime.utcnow)
+    applied_at = Column(DateTime, nullable=True)
+
+    truck = relationship("Truck", back_populates="commands")
+
+
+class Driver(Base):
+    __tablename__ = "drivers"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    name = Column(String, nullable=False)
+    license_number = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+
+    trips = relationship("Trip", back_populates="driver")
+
+
+class Trip(Base):
+    __tablename__ = "trips"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    truck_id = Column(String, ForeignKey("trucks.id"), nullable=False)
+    driver_id = Column(String, ForeignKey("drivers.id"), nullable=False)
+    origin = Column(String, nullable=False)
+    destination = Column(String, nullable=False)
+    cargo_description = Column(String, nullable=True)
+    started_at = Column(DateTime, default=datetime.utcnow)
+    finished_at = Column(DateTime, nullable=True)
+
+    truck = relationship("Truck", back_populates="trips")
+    driver = relationship("Driver", back_populates="trips")
+    carta_porte = relationship(
+        "CartaPorteRecord", back_populates="trip", uselist=False, cascade="all, delete-orphan"
+    )
+
+
+class CartaPorteRecord(Base):
+    """Registro interno con los datos de un carta porte — no es el CFDI timbrado."""
+
+    __tablename__ = "carta_porte_records"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    trip_id = Column(String, ForeignKey("trips.id"), unique=True, nullable=False)
+    folio = Column(String, nullable=False)
+    merchandise_description = Column(String, nullable=False)
+    weight_kg = Column(Float, nullable=True)
+    transport_config = Column(String, nullable=True)
+
+    trip = relationship("Trip", back_populates="carta_porte")
