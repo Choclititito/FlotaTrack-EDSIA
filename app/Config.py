@@ -1,6 +1,4 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-
 class Settings(BaseSettings):
     """Configuración de la app, siempre por variables de entorno (nunca hardcodeada)."""
 

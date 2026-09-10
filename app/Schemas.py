@@ -1,7 +1,5 @@
 import datetime
-
 from pydantic import BaseModel, ConfigDict, Field
-
 
 class TelemetryIn(BaseModel):
     latitude: float
@@ -9,7 +7,6 @@ class TelemetryIn(BaseModel):
     speed_kmh: float = Field(ge=0)
     fuel_level_pct: float = Field(ge=0, le=100)
     acknowledged_command_id: str | None = None
-
 
 class PendingCommandOut(BaseModel):
     type: str
@@ -25,7 +22,6 @@ class TruckCreate(BaseModel):
     plates: str
     model: str
     capacity_kg: float | None = None
-
 
 class TruckOut(BaseModel):
     id: str
