@@ -1,7 +1,9 @@
 from fastapi import FastAPI
+
 from app.config import settings
 from app.database import Base, engine
 from app.routers import drivers, telemetry, trips, trucks
+
 app = FastAPI(title="FleetTrack API", version="0.1.0")
 
 if settings.environment == "development":
@@ -13,6 +15,7 @@ app.include_router(trucks.router)
 app.include_router(telemetry.router)
 app.include_router(drivers.router)
 app.include_router(trips.router)
+
 
 @app.get("/health", tags=["health"])
 def health() -> dict[str, str]:
