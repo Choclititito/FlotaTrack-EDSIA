@@ -1,0 +1,39 @@
+import uuid
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Float, ForeignKey, String
+from sqlalchemy.orm import relationship
+
+from app.database import Base
+
+
+def gen_uuid() -> str:
+    return str(uuid.uuid4())
+
+
+class Truck(Base):
+    __tablename__ = "trucks"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    plates = Column(String, unique=True, nullable=False)
+    model = Column(String, nullable=False)
+    capacity_kg = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    telemetry_readings = relationship(
+        "TelemetryReading", back_populates="truck", cascade="all, delete-orphan"
+    )
+
+
+class TelemetryReading(Base):
+    __tablename__ = "telemetry_readings"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    truck_id = Column(String, ForeignKey("trucks.id"), nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    speed_kmh = Column(Float, nullable=False)
+    fuel_level_pct = Column(Float, nullable=False)
+    recorded_at = Column(DateTime, default=datetime.utcnow)
+
+    truck = relationship("Truck", back_populates="telemetry_readings")
