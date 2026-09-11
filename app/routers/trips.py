@@ -74,7 +74,6 @@ def upsert_carta_porte(
     else:
         response.status_code = 200
 
-    # Cambio: Se añaden las directivas type: ignore para omitir el falso positivo
     record.folio = payload.folio  # type: ignore[assignment]
     record.merchandise_description = payload.merchandise_description  # type: ignore[assignment]
     record.weight_kg = payload.weight_kg  # type: ignore[assignment]
