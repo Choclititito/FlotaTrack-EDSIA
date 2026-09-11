@@ -38,7 +38,7 @@ def test_kill_switch_requires_confirmation(client):
 
 
 def test_kill_switch_full_flow(client):
-    create_resp = client.post("/trucks", json={"plates": "XYZ-999", "model": "Freightliner Cascadia"})
+    create_resp = client.post("/trucks", json={"plates": "XYZ-999", "model": "Freightliner "})
     truck_id = create_resp.json()["id"]
 
     resp = client.post(f"/trucks/{truck_id}/kill-switch", json={"action": "lock", "confirm": True})

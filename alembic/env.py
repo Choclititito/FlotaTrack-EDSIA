@@ -2,8 +2,9 @@ import os
 import sys
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
+
+from alembic import context
 
 # Alembic, cuando se invoca como "alembic ..." (entry point instalado), no agrega
 # el directorio actual a sys.path como sí lo hace "python -m alembic ...". Lo
