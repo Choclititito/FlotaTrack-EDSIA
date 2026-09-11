@@ -8,7 +8,6 @@ Uso:
 import argparse
 import random
 import time
-
 import requests
 
 
@@ -33,7 +32,7 @@ def run(base_url: str, truck_id: str, interval: float) -> None:
             "fuel_level_pct": round(fuel, 1),
         }
         if acknowledged_command_id:
-            payload["acknowledged_command_id"] = acknowledged_command_id
+            payload["acknowledged_command_id"] = acknowledged_command_id # type: ignore[assignment]
             acknowledged_command_id = None
 
         response = requests.post(

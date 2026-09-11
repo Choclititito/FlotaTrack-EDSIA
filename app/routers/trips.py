@@ -74,10 +74,11 @@ def upsert_carta_porte(
     else:
         response.status_code = 200
 
-    record.folio = payload.folio
-    record.merchandise_description = payload.merchandise_description
-    record.weight_kg = payload.weight_kg
-    record.transport_config = payload.transport_config
+    # Cambio: Se añaden las directivas type: ignore para omitir el falso positivo
+    record.folio = payload.folio  # type: ignore[assignment]
+    record.merchandise_description = payload.merchandise_description  # type: ignore[assignment]
+    record.weight_kg = payload.weight_kg  # type: ignore[assignment]
+    record.transport_config = payload.transport_config  # type: ignore[assignment]
 
     db.commit()
     db.refresh(record)
