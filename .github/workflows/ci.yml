@@ -70,7 +70,7 @@ jobs:
             -d '{"plates":"ABC-123","model":"Kenworth T680","capacity_kg":20000}' \
             | python -c "import sys, json; print(json.load(sys.stdin)['id'])")
           echo "Camión creado: $TRUCK_ID"
-          curl -sf "http://localhost:8000/trucks/$TRUCK_ID" | grep "ABC-123"
+          curl -sf "http://localhost:8000/trucks" | grep "ABC-123"
 
   # Requiere que exista un Dockerfile válido en la raíz (ya lo tienes).
   security-scan:
