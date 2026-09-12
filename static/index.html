@@ -91,7 +91,7 @@
 <div class="topbar">
   <h1>FlotaTrack — panel de operación</h1>
   <span><span id="statusDot" class="status-dot"></span><span id="statusText" class="status-text">Conectando…</span></span>
-  <input id="apiBaseInput" type="text" placeholder="https://flotatrack-edsia.onrender.com">
+  <input id="apiBaseInput" type="text" placeholder=" URL de la API ">
   <button class="btn btn-accent" id="connectBtn">Conectar</button>
   <button class="btn" id="refreshBtn" title="Actualizar ahora">↻ Actualizar</button>
 </div>
@@ -157,7 +157,7 @@
 <script>
 // ── Configuración: ajusta rutas y nombres de campo a los que ya existan en tu backend ──
 const CONFIG = {
-  apiBase: localStorage.getItem('flotatrack_api_base') || 'http://localhost:8000',
+  apiBase: localStorage.getItem('flotatrack_api_base') || 'https://flotatrack-edsia.onrender.com',
   pollMs: 5000,
   endpoints: {
     listTrucks: () => '/trucks',
