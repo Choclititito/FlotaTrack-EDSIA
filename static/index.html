@@ -91,7 +91,7 @@
 <div class="topbar">
   <h1>FlotaTrack — panel de operación</h1>
   <span><span id="statusDot" class="status-dot"></span><span id="statusText" class="status-text">Conectando…</span></span>
-  <input id="apiBaseInput" type="text" placeholder=" URL de la API ">
+  <input id="apiBaseInput" type="text" placeholder="https://flotatrack-edsia.onrender.com">
   <button class="btn btn-accent" id="connectBtn">Conectar</button>
   <button class="btn" id="refreshBtn" title="Actualizar ahora">↻ Actualizar</button>
 </div>
@@ -120,8 +120,11 @@
     <div class="panel">
       <h2>Kill switch antirrobo</h2>
       <div class="kill-row">
-        <p class="kill-note">El corte solo se ejecuta cuando el propio dispositivo reporta velocidad 0 — el servidor nunca lo fuerza con el camión en movimiento.</p>
-        <button class="btn btn-danger" id="killBtn" disabled>Cortar bomba de combustible</button>
+        <p class="kill-note">El corte o la reactivación solo se aplican cuando el propio dispositivo reporta velocidad 0 — el servidor nunca lo fuerza con el camión en movimiento.</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn btn-danger" id="lockBtn" disabled>Cortar bomba de combustible</button>
+          <button class="btn btn-accent" id="unlockBtn" disabled>Restablecer bomba de combustible</button>
+        </div>
       </div>
     </div>
 
@@ -234,14 +237,9 @@ async function loadTrucks(){
   }
 }
 
-function updateKillButton(securityState){
-  const btn = $('#killBtn');
-  const locked = securityState === 'locked';
-  state.killAction = locked ? 'unlock' : 'lock';
-  btn.textContent = locked ? 'Reactivar bomba de combustible' : 'Cortar bomba de combustible';
-  btn.className = 'btn ' + (locked ? 'btn-accent' : 'btn-danger');
-  $('#killModalTitle').textContent = locked ? 'Confirmar reactivación de combustible' : 'Confirmar corte de combustible';
-  $('#killActionLabel').textContent = locked ? 'reactivar' : 'cortar';
+function updateKillButtons(){
+  $('#lockBtn').disabled = !state.selectedId;
+  $('#unlockBtn').disabled = !state.selectedId;
 }
 
 function selectTruck(id){
@@ -249,8 +247,7 @@ function selectTruck(id){
   const t = state.trucks.find(x => x.id === id);
   $('#selectedTitle').textContent = t ? `Telemetría — ${t.plates ?? id}` : 'Telemetría';
   $('#killTruckLabel').textContent = t ? (t.plates ?? id) : 'esta unidad';
-  $('#killBtn').disabled = false;
-  updateKillButton(t?.security_state);
+  updateKillButtons();
   renderTruckList();
   refreshSelected();
 }
@@ -267,7 +264,6 @@ async function refreshSelected(){
     // security_state viene en data.truck — mantiene sincronizados el pill y el botón del kill switch
     const t = state.trucks.find(x => x.id === state.selectedId);
     if(t && data.truck) t.security_state = data.truck.security_state;
-    updateKillButton(data.truck?.security_state);
     renderTruckList();
 
     if(reading.latitude != null && reading.longitude != null){
@@ -307,7 +303,14 @@ function renderHistory(items){
   `).join('');
 }
 
-function openKillModal(){ $('#killOverlay').classList.add('open'); }
+function openKillModal(action){
+  state.killAction = action;
+  $('#killModalTitle').textContent = action === 'lock'
+    ? 'Confirmar corte de combustible'
+    : 'Confirmar reactivación de combustible';
+  $('#killActionLabel').textContent = action === 'lock' ? 'cortar' : 'reactivar';
+  $('#killOverlay').classList.add('open');
+}
 function closeKillModal(){ $('#killOverlay').classList.remove('open'); }
 
 async function confirmKillSwitch(){
@@ -342,7 +345,8 @@ function init(){
     loadTrucks();
   };
   $('#refreshBtn').onclick = () => { loadTrucks(); refreshSelected(); };
-  $('#killBtn').onclick = openKillModal;
+  $('#lockBtn').onclick = () => openKillModal('lock');
+  $('#unlockBtn').onclick = () => openKillModal('unlock');
   $('#killCancel').onclick = closeKillModal;
   $('#killConfirm').onclick = confirmKillSwitch;
 
