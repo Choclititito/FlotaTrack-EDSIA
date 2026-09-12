@@ -58,13 +58,3 @@ pytest --cov=app --cov-report=term-missing
 Las pruebas corren contra SQLite en memoria (ver `tests/conftest.py`), así no
 dependen de tener Postgres corriendo para el CI.
 
-## Qué falta (próximos pasos del backlog)
-
-- Firmware real del ESP32: GPS + sensor de combustible + relé del kill switch,
-  siguiendo el mismo protocolo que ya implementa `scripts/simulate_device.py`.
-- Endpoints de conductores y viajes completos (los modelos ya están:
-  `Driver`, `Trip`).
-- Dashboard web (mapa en vivo + perfiles + historial de alertas).
-- Experimento de detección de anomalías en combustible/ruta para el AI_LOG.
-- Migrar el kill switch de "confirmación simple" a autenticación real de quién
-  lo solicita.
