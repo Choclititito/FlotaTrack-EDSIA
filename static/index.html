@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlotaTrack — Panel de operación</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --bg:#10151A; --panel:#1A2129; --panel-2:#1F2830; --border:#2A343D;
+    --text:#E7ECEF; --text-muted:#8B98A5;
+    --accent:#2DD4BF; --accent-dim:#1B4B45;
+    --danger:#E14B3B; --danger-dark:#B23A2D; --danger-dim:#3A2320;
+    --warn:#E0A93A; --ok:#4CAF6D;
+    --radius:10px;
+    --mono:'IBM Plex Mono', ui-monospace, monospace;
+    --sans:'Inter', system-ui, -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); font-size:14px; line-height:1.5;}
+  h1,h2,h3{font-weight:600; margin:0;}
+  .topbar{display:flex; align-items:center; gap:12px; padding:14px 20px; background:var(--panel); border-bottom:1px solid var(--border); flex-wrap:wrap;}
+  .topbar h1{font-size:16px; letter-spacing:0.2px; margin-right:auto;}
+  .topbar input{background:var(--panel-2); border:1px solid var(--border); color:var(--text); padding:7px 10px; border-radius:8px; font-family:var(--mono); font-size:13px; width:220px;}
+  .btn{border:1px solid var(--border); background:var(--panel-2); color:var(--text); padding:7px 14px; border-radius:8px; font-family:var(--sans); font-size:13px; font-weight:500; cursor:pointer;}
+  .btn:hover{border-color:var(--accent);}
+  .btn:disabled{opacity:0.45; cursor:not-allowed;}
+  .btn-accent{background:var(--accent-dim); border-color:var(--accent); color:var(--accent);}
+  .btn-danger{background:var(--danger); border-color:var(--danger); color:#fff;}
+  .btn-danger:hover{background:var(--danger-dark);}
+  .status-dot{width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; background:var(--text-muted);}
+  .status-dot.live{background:var(--ok);}
+  .status-dot.down{background:var(--danger);}
+  .status-text{color:var(--text-muted); font-size:13px;}
+
+  .layout{display:grid; grid-template-columns:280px 1fr; gap:16px; padding:16px 20px; align-items:start;}
+  @media (max-width:900px){ .layout{grid-template-columns:1fr;} }
+
+  .panel{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:14px;}
+  .panel + .panel{margin-top:16px;}
+  .panel h2{font-size:13px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:10px;}
+
+  .truck-row{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:9px 10px; border-radius:8px; cursor:pointer; border:1px solid transparent;}
+  .truck-row:hover{background:var(--panel-2);}
+  .truck-row.selected{background:var(--panel-2); border-color:var(--accent);}
+  .truck-row .plates{font-family:var(--mono); font-weight:500;}
+  .truck-row .model{color:var(--text-muted); font-size:12px; display:block;}
+  .fuel-pill{font-family:var(--mono); font-size:12px; padding:2px 7px; border-radius:20px; background:var(--panel-2); border:1px solid var(--border);}
+  .fuel-pill.low{color:var(--danger); border-color:var(--danger);}
+  .fuel-pill.mid{color:var(--warn); border-color:var(--warn);}
+  .fuel-pill.ok{color:var(--ok); border-color:var(--ok);}
+  .empty-state{color:var(--text-muted); font-size:13px; padding:8px 2px;}
+
+  #map{height:360px; border-radius:8px; overflow:hidden; border:1px solid var(--border);}
+
+  .stat-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
+  @media (max-width:600px){ .stat-grid{grid-template-columns:1fr;} }
+  .stat-card{background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:12px;}
+  .stat-card .label{color:var(--text-muted); font-size:12px;}
+  .stat-card .value{font-family:var(--mono); font-size:22px; margin-top:4px;}
+
+  .kill-row{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;}
+  .kill-note{color:var(--text-muted); font-size:12px; max-width:420px;}
+
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{text-align:left; padding:8px 6px; border-bottom:1px solid var(--border);}
+  th{color:var(--text-muted); font-weight:500; font-size:12px; text-transform:uppercase;}
+  td.mono{font-family:var(--mono);}
+  .tag{padding:2px 8px; border-radius:20px; font-size:11px; font-family:var(--mono);}
+  .tag.ok{background:rgba(76,175,109,0.15); color:var(--ok);}
+  .tag.pending{background:rgba(224,169,58,0.15); color:var(--warn);}
+
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,0.55); display:none; align-items:center; justify-content:center; z-index:50;}
+  .overlay.open{display:flex;}
+  .modal{background:var(--panel); border:1px solid var(--danger); border-radius:var(--radius); padding:20px; width:360px; max-width:90vw;}
+  .modal h3{color:var(--danger); font-size:15px; margin-bottom:8px;}
+  .modal p{color:var(--text-muted); font-size:13px; margin:0 0 16px;}
+  .modal .actions{display:flex; justify-content:flex-end; gap:8px;}
+
+  .toast{position:fixed; bottom:20px; right:20px; background:var(--panel-2); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; padding:10px 14px; font-size:13px; max-width:320px; z-index:60; display:none;}
+  .toast.show{display:block;}
+  .toast.error{border-left-color:var(--danger);}
+
+  .contract{margin-top:16px; padding:12px 20px; color:var(--text-muted); font-size:12px; font-family:var(--mono); line-height:1.7;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>FlotaTrack — panel de operación</h1>
+  <span><span id="statusDot" class="status-dot"></span><span id="statusText" class="status-text">Conectando…</span></span>
+  <input id="apiBaseInput" type="text" placeholder="http://localhost:8000">
+  <button class="btn btn-accent" id="connectBtn">Conectar</button>
+  <button class="btn" id="refreshBtn" title="Actualizar ahora">↻ Actualizar</button>
+</div>
+
+<div class="layout">
+  <div class="panel">
+    <h2>Unidades</h2>
+    <div id="truckList"><div class="empty-state">Sin datos todavía.</div></div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>Mapa en vivo</h2>
+      <div id="map"></div>
+    </div>
+
+    <div class="panel">
+      <h2 id="selectedTitle">Telemetría</h2>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="label">Combustible</div><div class="value" id="statFuel">—</div></div>
+        <div class="stat-card"><div class="label">Velocidad</div><div class="value" id="statSpeed">—</div></div>
+        <div class="stat-card"><div class="label">Última actualización</div><div class="value" id="statUpdated" style="font-size:14px;">—</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Kill switch antirrobo</h2>
+      <div class="kill-row">
+        <p class="kill-note">El corte solo se ejecuta cuando el propio dispositivo reporta velocidad 0 — el servidor nunca lo fuerza con el camión en movimiento.</p>
+        <button class="btn btn-danger" id="killBtn" disabled>Cortar bomba de combustible</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Historial de activaciones</h2>
+      <table>
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Estado</th><th>Aplicado</th></tr></thead>
+        <tbody id="historyBody"><tr><td colspan="4" class="empty-state">Sin registros.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="contract">
+  Contrato de API que espera este panel, inferido de tus schemas.py (ajusta CONFIG.endpoints en el script si tu router usa otras rutas):
+  GET /trucks · GET /trucks/{id}/status → TruckStatusOut · GET /trucks/{id}/commands → list[CommandOut] · POST /trucks/{id}/kill-switch
+</div>
+
+<div class="overlay" id="killOverlay">
+  <div class="modal">
+    <h3 id="killModalTitle">Confirmar corte de combustible</h3>
+    <p id="killModalBody">Esta acción cambiará el estado de la bomba de combustible de <b id="killTruckLabel">esta unidad</b>: <b id="killActionLabel">cortar</b>. Solo se aplicará si el dispositivo reporta velocidad 0. ¿Confirmas?</p>
+    <div class="actions">
+      <button class="btn" id="killCancel">Cancelar</button>
+      <button class="btn btn-danger" id="killConfirm">Confirmar corte</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── Configuración: ajusta rutas y nombres de campo a los que ya existan en tu backend ──
+const CONFIG = {
+  apiBase: localStorage.getItem('flotatrack_api_base') || 'http://localhost:8000',
+  pollMs: 5000,
+  endpoints: {
+    listTrucks: () => '/trucks',
+    status: (id) => `/trucks/${id}/status`,
+    commands: (id) => `/trucks/${id}/commands`,
+    killSwitch: (id) => `/trucks/${id}/kill-switch`,
+  },
+};
+
+const state = { trucks: [], selectedId: null, pollTimer: null, map: null, marker: null, killAction: 'lock' };
+
+const $ = (sel) => document.querySelector(sel);
+
+function toast(msg, isError=false){
+  const el = $('#toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => el.className = 'toast', 3500);
+}
+
+async function api(path, options={}){
+  const res = await fetch(CONFIG.apiBase + path, {
+    headers: {'Content-Type': 'application/json'}, ...options,
+  });
+  if(!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.status === 204 ? null : res.json();
+}
+
+function setStatus(live){
+  $('#statusDot').className = 'status-dot ' + (live ? 'live' : 'down');
+  $('#statusText').textContent = live ? 'En vivo' : 'Sin conexión con la API';
+}
+
+function securityClass(state){
+  return state === 'locked' ? 'low' : 'ok';
+}
+
+function initMap(){
+  state.map = L.map('map', {zoomControl:true}).setView([19.4326, -99.1332], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'&copy; OpenStreetMap',
+    maxZoom:18,
+  }).addTo(state.map);
+}
+
+function renderTruckList(){
+  const box = $('#truckList');
+  if(!state.trucks.length){
+    box.innerHTML = '<div class="empty-state">Sin unidades registradas.</div>';
+    return;
+  }
+  box.innerHTML = '';
+  state.trucks.forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'truck-row' + (t.id === state.selectedId ? ' selected' : '');
+    row.innerHTML = `
+      <span><span class="plates">${t.plates ?? t.id}</span><span class="model">${t.model ?? ''}</span></span>
+      <span class="fuel-pill ${securityClass(t.security_state)}">${t.security_state === 'locked' ? 'bloqueado' : 'activo'}</span>
+    `;
+    row.onclick = () => selectTruck(t.id);
+    box.appendChild(row);
+  });
+}
+
+async function loadTrucks(){
+  try{
+    const data = await api(CONFIG.endpoints.listTrucks());
+    state.trucks = Array.isArray(data) ? data : (data.items ?? []);
+    setStatus(true);
+    if(!state.selectedId && state.trucks.length) selectTruck(state.trucks[0].id);
+    renderTruckList();
+  }catch(err){
+    setStatus(false);
+  }
+}
+
+function updateKillButton(securityState){
+  const btn = $('#killBtn');
+  const locked = securityState === 'locked';
+  state.killAction = locked ? 'unlock' : 'lock';
+  btn.textContent = locked ? 'Reactivar bomba de combustible' : 'Cortar bomba de combustible';
+  btn.className = 'btn ' + (locked ? 'btn-accent' : 'btn-danger');
+  $('#killModalTitle').textContent = locked ? 'Confirmar reactivación de combustible' : 'Confirmar corte de combustible';
+  $('#killActionLabel').textContent = locked ? 'reactivar' : 'cortar';
+}
+
+function selectTruck(id){
+  state.selectedId = id;
+  const t = state.trucks.find(x => x.id === id);
+  $('#selectedTitle').textContent = t ? `Telemetría — ${t.plates ?? id}` : 'Telemetría';
+  $('#killTruckLabel').textContent = t ? (t.plates ?? id) : 'esta unidad';
+  $('#killBtn').disabled = false;
+  updateKillButton(t?.security_state);
+  renderTruckList();
+  refreshSelected();
+}
+
+async function refreshSelected(){
+  if(!state.selectedId) return;
+  try{
+    const data = await api(CONFIG.endpoints.status(state.selectedId));
+    const reading = data.latest_reading ?? {};
+    $('#statFuel').textContent = reading.fuel_level_pct != null ? `${reading.fuel_level_pct}%` : '—';
+    $('#statSpeed').textContent = reading.speed_kmh != null ? `${reading.speed_kmh} km/h` : '—';
+    $('#statUpdated').textContent = reading.recorded_at ? new Date(reading.recorded_at).toLocaleString('es-MX') : '—';
+
+    // security_state viene en data.truck — mantiene sincronizados el pill y el botón del kill switch
+    const t = state.trucks.find(x => x.id === state.selectedId);
+    if(t && data.truck) t.security_state = data.truck.security_state;
+    updateKillButton(data.truck?.security_state);
+    renderTruckList();
+
+    if(reading.latitude != null && reading.longitude != null){
+      if(!state.marker){
+        state.marker = L.marker([reading.latitude, reading.longitude]).addTo(state.map);
+      }else{
+        state.marker.setLatLng([reading.latitude, reading.longitude]);
+      }
+      state.map.setView([reading.latitude, reading.longitude], 13);
+    }
+    setStatus(true);
+  }catch(err){
+    setStatus(false);
+  }
+
+  try{
+    const history = await api(CONFIG.endpoints.commands(state.selectedId));
+    renderHistory(Array.isArray(history) ? history : (history.items ?? []));
+  }catch(err){
+    // el endpoint de historial es opcional para que el panel siga funcionando sin él
+  }
+}
+
+function renderHistory(items){
+  const body = $('#historyBody');
+  if(!items.length){
+    body.innerHTML = '<tr><td colspan="4" class="empty-state">Sin registros.</td></tr>';
+    return;
+  }
+  body.innerHTML = items.map(ev => `
+    <tr>
+      <td class="mono">${ev.requested_at ? new Date(ev.requested_at).toLocaleString('es-MX') : '—'}</td>
+      <td class="mono">${ev.type ?? '—'}</td>
+      <td><span class="tag ${ev.status === 'applied' ? 'ok' : ev.status === 'cancelled' ? '' : 'pending'}">${ev.status ?? '—'}</span></td>
+      <td class="mono">${ev.applied_at ? new Date(ev.applied_at).toLocaleString('es-MX') : '—'}</td>
+    </tr>
+  `).join('');
+}
+
+function openKillModal(){ $('#killOverlay').classList.add('open'); }
+function closeKillModal(){ $('#killOverlay').classList.remove('open'); }
+
+async function confirmKillSwitch(){
+  closeKillModal();
+  const action = state.killAction ?? 'lock';
+  try{
+    await api(CONFIG.endpoints.killSwitch(state.selectedId), {
+      method: 'POST',
+      body: JSON.stringify({action, confirm:true}),
+    });
+    toast(action === 'lock'
+      ? 'Corte solicitado. Se aplicará cuando la unidad reporte velocidad 0.'
+      : 'Reactivación solicitada. Se aplicará cuando la unidad reporte velocidad 0.');
+    refreshSelected();
+  }catch(err){
+    toast('No se pudo enviar la acción: ' + err.message, true);
+  }
+}
+
+function startPolling(){
+  if(state.pollTimer) clearInterval(state.pollTimer);
+  state.pollTimer = setInterval(() => { loadTrucks(); refreshSelected(); }, CONFIG.pollMs);
+}
+
+function init(){
+  $('#apiBaseInput').value = CONFIG.apiBase;
+  initMap();
+
+  $('#connectBtn').onclick = () => {
+    CONFIG.apiBase = $('#apiBaseInput').value.trim().replace(/\/$/, '');
+    localStorage.setItem('flotatrack_api_base', CONFIG.apiBase);
+    loadTrucks();
+  };
+  $('#refreshBtn').onclick = () => { loadTrucks(); refreshSelected(); };
+  $('#killBtn').onclick = openKillModal;
+  $('#killCancel').onclick = closeKillModal;
+  $('#killConfirm').onclick = confirmKillSwitch;
+
+  loadTrucks();
+  startPolling();
+}
+
+init();
+</script>
+</body>
+</html>

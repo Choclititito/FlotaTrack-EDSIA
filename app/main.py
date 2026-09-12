@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import Base, engine
@@ -15,7 +16,8 @@ app.include_router(trucks.router)
 app.include_router(telemetry.router)
 app.include_router(drivers.router)
 app.include_router(trips.router)
-
+# ...
+app.mount("/panel", StaticFiles(directory="static", html=True), name="panel")
 
 @app.get("/health", tags=["health"])
 def health() -> dict[str, str]:
