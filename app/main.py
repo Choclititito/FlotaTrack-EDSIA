@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from app.config import settings
 from app.database import Base, engine
 from app.routers import drivers, telemetry, trips, trucks
+from fastapi.staticfiles import StaticFiles
+# ...
 
 app = FastAPI(title="FleetTrack API", version="0.1.0")
 
@@ -15,7 +17,9 @@ app.include_router(trucks.router)
 app.include_router(telemetry.router)
 app.include_router(drivers.router)
 app.include_router(trips.router)
+# ...
 
+app.mount("/panel", StaticFiles(directory="static", html=True), name="panel")
 
 @app.get("/health", tags=["health"])
 def health() -> dict[str, str]:
