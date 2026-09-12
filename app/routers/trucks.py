@@ -49,6 +49,21 @@ def truck_status(truck_id: str, db: Session = Depends(get_db)) -> schemas.TruckS
     return schemas.TruckStatusOut(truck=truck, latest_reading=latest_out)
 
 
+@router.get("/{truck_id}/commands", response_model=list[schemas.CommandOut])
+def list_truck_commands(truck_id: str, db: Session = Depends(get_db)) -> list[models.Command]:
+    """Historial de comandos de kill switch de este camión (mas reciente primero)."""
+    truck = db.get(models.Truck, truck_id)
+    if truck is None:
+        raise HTTPException(status_code=404, detail="Truck not found")
+
+    return (
+        db.query(models.Command)
+        .filter(models.Command.truck_id == truck_id)
+        .order_by(models.Command.requested_at.desc())
+        .all()
+    )
+
+
 @router.post("/{truck_id}/kill-switch", response_model=schemas.CommandOut, status_code=201)
 def request_kill_switch(
     truck_id: str, payload: schemas.KillSwitchRequest, db: Session = Depends(get_db)
@@ -83,4 +98,3 @@ def request_kill_switch(
     db.commit()
     db.refresh(command)
     return command
-
