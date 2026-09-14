@@ -4,15 +4,15 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import Base, engine
-from app.routers import drivers, telemetry, trips, trucks
+from app.routers import auth, drivers, telemetry, trips, trucks
 
-app = FastAPI(title="FlOTATrack API", version="0.2.1")
+app = FastAPI(title="FleetTrack API", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://flotatrack-edsia.onrender.com",  #  dominio en Render
-        "http://localhost:8000",                   # pruebas local
+        "https://flotatrack-edsia.onrender.com",  # tu propio dominio en Render
+        "http://localhost:8000",                   # para cuando pruebas local
         "null",                                     # para cuando abres el .html con doble clic (file://)
     ],
     allow_methods=["GET", "POST"],
@@ -28,8 +28,10 @@ app.include_router(trucks.router)
 app.include_router(telemetry.router)
 app.include_router(drivers.router)
 app.include_router(trips.router)
+app.include_router(auth.router)
 # ...
 app.mount("/panel", StaticFiles(directory="static", html=True), name="panel")
+app.mount("/empleados", StaticFiles(directory="static-empleados", html=True), name="empleados")
 
 
 @app.get("/health", tags=["health"])

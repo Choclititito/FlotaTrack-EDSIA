@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.database import get_db
+from app.security import require_employee_auth
 
 router = APIRouter(prefix="/trips", tags=["trips"])
 
@@ -49,6 +50,7 @@ def upsert_carta_porte(
     payload: schemas.CartaPorteCreate,
     response: Response,
     db: Session = Depends(get_db),
+    _employee: str = Depends(require_employee_auth),
 ) -> models.CartaPorteRecord:
     """Crea o actualiza el registro de carta porte de un viaje.
 
