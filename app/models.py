@@ -2,7 +2,7 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, String
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, String
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -26,6 +26,18 @@ class CommandStatus(str, enum.Enum):
     pending = "pending"
     applied = "applied"
     cancelled = "cancelled"
+
+
+class TipoCfdi(str, enum.Enum):
+    ingreso = "Ingreso"
+    traslado = "Traslado"
+
+
+class TipoTransporte(str, enum.Enum):
+    terrestre = "Terrestre"
+    aereo = "Aéreo"
+    maritimo = "Marítimo"
+    ferroviario = "Ferroviario"
 
 
 class Truck(Base):
@@ -109,15 +121,74 @@ class Trip(Base):
 
 
 class CartaPorteRecord(Base):
-    """Registro interno con los datos de un carta porte — no es el CFDI timbrado."""
+    """Registro interno con los datos de un carta porte — no es el CFDI timbrado ante el SAT.
+
+    Un solo registro por viaje: una mercancía, un tramo (origen-destino) y un
+    remolque. Si más adelante se necesita soportar varias mercancías/tramos/
+    remolques por viaje, esto tendría que pasar a tablas relacionadas.
+    """
 
     __tablename__ = "carta_porte_records"
 
     id = Column(String, primary_key=True, default=gen_uuid)
     trip_id = Column(String, ForeignKey("trips.id"), unique=True, nullable=False)
     folio = Column(String, nullable=False)
+
+    # --- Datos fiscales generales ---
+    emisor_rfc = Column(String, nullable=False)
+    receptor_rfc = Column(String, nullable=False)
+    tipo_cfdi = Column(String, default=TipoCfdi.traslado.value, nullable=False)
+
+    # --- Ubicación de origen ---
+    origen_clave = Column(String, nullable=False)  # p. ej. "OR000001"
+    origen_calle = Column(String, nullable=False)
+    origen_numero_exterior = Column(String, nullable=True)
+    origen_numero_interior = Column(String, nullable=True)
+    origen_colonia = Column(String, nullable=False)
+    origen_localidad = Column(String, nullable=True)
+    origen_municipio = Column(String, nullable=False)
+    origen_estado = Column(String, nullable=False)
+    origen_pais = Column(String, default="México", nullable=False)
+    origen_codigo_postal = Column(String, nullable=False)
+    origen_fecha_hora_salida = Column(DateTime, nullable=False)
+
+    # --- Ubicación de destino ---
+    destino_clave = Column(String, nullable=False)  # p. ej. "DE000001"
+    destino_calle = Column(String, nullable=False)
+    destino_numero_exterior = Column(String, nullable=True)
+    destino_numero_interior = Column(String, nullable=True)
+    destino_colonia = Column(String, nullable=False)
+    destino_localidad = Column(String, nullable=True)
+    destino_municipio = Column(String, nullable=False)
+    destino_estado = Column(String, nullable=False)
+    destino_pais = Column(String, default="México", nullable=False)
+    destino_codigo_postal = Column(String, nullable=False)
+    destino_fecha_hora_llegada = Column(DateTime, nullable=False)
+
+    distancia_recorrida_km = Column(Float, nullable=False)
+
+    # --- Mercancía ---
+    mercancia_clave_prod_serv = Column(String, nullable=False)
     merchandise_description = Column(String, nullable=False)
-    weight_kg = Column(Float, nullable=True)
-    transport_config = Column(String, nullable=True)
+    mercancia_peso_bruto_kg = Column(Float, nullable=False)
+    mercancia_peso_neto_kg = Column(Float, nullable=False)
+    mercancia_clave_unidad = Column(String, nullable=False)
+    material_peligroso = Column(Boolean, default=False, nullable=False)
+    mercancia_embalaje = Column(String, nullable=True)  # solo si material_peligroso=True
+
+    # --- Datos del medio de transporte ---
+    tipo_transporte = Column(String, default=TipoTransporte.terrestre.value, nullable=False)
+    config_vehicular = Column(String, nullable=False)
+    placa_camion = Column(String, nullable=False)
+    placa_remolque = Column(String, nullable=True)
+    numero_permiso_sict = Column(String, nullable=False)
+    aseguradora_nombre = Column(String, nullable=False)
+    poliza_numero = Column(String, nullable=False)
+
+    # --- Datos de la figura de transporte (operador) ---
+    operador_nombre = Column(String, nullable=False)
+    operador_rfc = Column(String, nullable=False)
+    operador_licencia = Column(String, nullable=False)
+    operador_domicilio = Column(String, nullable=False)
 
     trip = relationship("Trip", back_populates="carta_porte")

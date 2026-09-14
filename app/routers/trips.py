@@ -52,10 +52,11 @@ def upsert_carta_porte(
 ) -> models.CartaPorteRecord:
     """Crea o actualiza el registro de carta porte de un viaje.
 
-    Es un registro interno del sistema (folio, mercancía, peso, config. de
-    transporte) — NO es el CFDI de Carta Porte timbrado ante el SAT, eso queda
-    fuera de alcance del reto. Un viaje solo tiene un registro de carta porte,
-    así que si ya existía se actualiza (200) en vez de duplicarse (201).
+    Es un registro interno del sistema (datos fiscales, ubicaciones,
+    mercancía, medio de transporte y figura de transporte) — NO es el CFDI de
+    Carta Porte timbrado ante el SAT, eso queda fuera de alcance del reto. Un
+    viaje solo tiene un registro de carta porte, así que si ya existía se
+    actualiza (200) en vez de duplicarse (201).
     """
     trip = db.get(models.Trip, trip_id)
     if trip is None:
@@ -74,10 +75,8 @@ def upsert_carta_porte(
     else:
         response.status_code = 200
 
-    record.folio = payload.folio  # type: ignore[assignment]
-    record.merchandise_description = payload.merchandise_description  # type: ignore[assignment]
-    record.weight_kg = payload.weight_kg  # type: ignore[assignment]
-    record.transport_config = payload.transport_config  # type: ignore[assignment]
+    for field, value in payload.model_dump().items():
+        setattr(record, field, value)
 
     db.commit()
     db.refresh(record)
@@ -98,4 +97,3 @@ def get_carta_porte(trip_id: str, db: Session = Depends(get_db)) -> models.Carta
     if record is None:
         raise HTTPException(status_code=404, detail="Carta porte not registered for this trip")
     return record
-
