@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.database import get_db
+from app.pdf_carta_porte import generate_carta_porte_pdf
 from app.security import require_employee_auth
 
 router = APIRouter(prefix="/trips", tags=["trips"])
@@ -99,3 +100,26 @@ def get_carta_porte(trip_id: str, db: Session = Depends(get_db)) -> models.Carta
     if record is None:
         raise HTTPException(status_code=404, detail="Carta porte not registered for this trip")
     return record
+
+
+@router.get("/{trip_id}/carta-porte/pdf")
+def download_carta_porte_pdf(trip_id: str, db: Session = Depends(get_db)) -> Response:
+    """Genera y descarga el PDF de la carta porte en el formato tradicional impreso."""
+    trip = db.get(models.Trip, trip_id)
+    if trip is None:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    record = (
+        db.query(models.CartaPorteRecord)
+        .filter(models.CartaPorteRecord.trip_id == trip_id)
+        .first()
+    )
+    if record is None:
+        raise HTTPException(status_code=404, detail="Carta porte not registered for this trip")
+
+    pdf_bytes = generate_carta_porte_pdf(record, trip)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="carta-porte-{record.folio}.pdf"'},
+    )
