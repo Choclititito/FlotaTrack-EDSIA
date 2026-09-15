@@ -6,7 +6,7 @@ from app.config import settings
 from app.database import Base, engine
 from app.routers import auth, drivers, telemetry, trips, trucks
 
-app = FastAPI(title="FleetTrack API", version="0.1.0")
+app = FastAPI(title="FlotaTrack", version="1.0.1")
 
 app.add_middleware(
     CORSMiddleware,
