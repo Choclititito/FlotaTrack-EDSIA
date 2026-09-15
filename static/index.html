@@ -64,6 +64,9 @@
   .kill-row{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;}
   .kill-note{color:var(--text-muted); font-size:12px; max-width:420px;}
   .text-input{background:var(--panel-2); border:1px solid var(--border); color:var(--text); padding:7px 10px; border-radius:8px; font-family:var(--mono); font-size:13px; flex:1; min-width:220px;}
+  .field-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-top:10px;}
+  .field label{display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;}
+  .field .text-input, select.text-input{width:100%; min-width:0;}
 
   table{width:100%; border-collapse:collapse; font-size:13px;}
   th,td{text-align:left; padding:8px 6px; border-bottom:1px solid var(--border);}
@@ -130,6 +133,38 @@
     </div>
 
     <div class="panel">
+      <h2>Nuevo camión</h2>
+      <div class="field-grid">
+        <div class="field"><label>Placas</label><input id="newTruckPlates" class="text-input"></div>
+        <div class="field"><label>Modelo</label><input id="newTruckModel" class="text-input"></div>
+        <div class="field"><label>Capacidad (kg)</label><input id="newTruckCapacity" type="number" min="0" class="text-input"></div>
+      </div>
+      <button class="btn btn-accent" id="createTruckBtn" style="margin-top:10px; width:100%;">Crear camión</button>
+    </div>
+
+    <div class="panel">
+      <h2>Nuevo conductor</h2>
+      <div class="field-grid">
+        <div class="field"><label>Nombre</label><input id="newDriverName" class="text-input"></div>
+        <div class="field"><label>Licencia</label><input id="newDriverLicense" class="text-input"></div>
+        <div class="field"><label>Teléfono</label><input id="newDriverPhone" class="text-input"></div>
+      </div>
+      <button class="btn btn-accent" id="createDriverBtn" style="margin-top:10px; width:100%;">Crear conductor</button>
+    </div>
+
+    <div class="panel">
+      <h2>Nuevo viaje</h2>
+      <div class="field-grid">
+        <div class="field"><label>Camión</label><select id="newTripTruck" class="text-input"></select></div>
+        <div class="field"><label>Conductor</label><select id="newTripDriver" class="text-input"></select></div>
+        <div class="field"><label>Origen</label><input id="newTripOrigin" class="text-input"></div>
+        <div class="field"><label>Destino</label><input id="newTripDestination" class="text-input"></div>
+        <div class="field"><label>Carga (opcional)</label><input id="newTripCargo" class="text-input"></div>
+      </div>
+      <button class="btn btn-accent" id="createTripBtn" style="margin-top:10px; width:100%;">Crear viaje</button>
+    </div>
+
+    <div class="panel">
       <h2>Historial de activaciones</h2>
       <table>
         <thead><tr><th>Fecha</th><th>Tipo</th><th>Estado</th><th>Aplicado</th></tr></thead>
@@ -147,23 +182,16 @@
 
     <div class="panel">
       <h2>Carta porte</h2>
-      <div class="kill-row">
-        <input id="tripIdInput" type="text" class="text-input" placeholder="ID del viaje (trip_id)">
-        <div style="display:flex; gap:8px;">
-          <button class="btn" id="cartaPorteSearchBtn">Buscar</button>
-          <button class="btn btn-accent" id="cartaPorteDownloadBtn" disabled>⬇ Descargar JSON</button>
-        </div>
-      </div>
-      <div id="cartaPorteBox" style="margin-top:12px;">
-        <div class="empty-state">Busca un viaje para ver su carta porte.</div>
-      </div>
+      <p class="kill-note" id="cartaPorteTripLabel">Selecciona un viaje en la tabla de arriba.</p>
+      <button class="btn btn-accent" id="cartaPortePdfBtn" disabled style="margin-top:10px;">⬇ Descargar PDF de carta porte</button>
     </div>
+
   </div>
 </div>
 
 <div class="contract">
   Contrato de API que espera este panel, inferido de tus schemas.py (ajusta CONFIG.endpoints en el script si tu router usa otras rutas):
-  GET /trucks · GET /trucks/{id}/status → TruckStatusOut · GET /trucks/{id}/commands → list[CommandOut] · POST /trucks/{id}/kill-switch · GET /trips → list[TripOut] · GET /trips/{trip_id}/carta-porte → CartaPorteOut
+  GET /trucks · GET /trucks/{id}/status → TruckStatusOut · GET /trucks/{id}/commands → list[CommandOut] · POST /trucks/{id}/kill-switch · GET /trips → list[TripOut] · POST /trucks · POST /drivers · POST /trips
 </div>
 
 <div class="overlay" id="killOverlay">
@@ -188,14 +216,14 @@ const CONFIG = {
   endpoints: {
     listTrucks: () => '/trucks',
     listTrips: () => '/trips',
+    drivers: () => '/drivers',
     status: (id) => `/trucks/${id}/status`,
     commands: (id) => `/trucks/${id}/commands`,
     killSwitch: (id) => `/trucks/${id}/kill-switch`,
-    cartaPorte: (tripId) => `/trips/${tripId}/carta-porte`,
   },
 };
 
-const state = { trucks: [], trips: [], selectedId: null, pollTimer: null, map: null, marker: null, killAction: 'lock', cartaPorte: null };
+const state = { trucks: [], trips: [], drivers: [], selectedId: null, selectedTripId: null, pollTimer: null, map: null, marker: null, killAction: 'lock', routeLayer: null, geocodeCache: {} };
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -257,6 +285,7 @@ async function loadTrucks(){
     setStatus(true);
     if(!state.selectedId && state.trucks.length) selectTruck(state.trucks[0].id);
     renderTruckList();
+    renderTripSelectOptions();
   }catch(err){
     setStatus(false);
   }
@@ -272,6 +301,10 @@ function selectTruck(id){
   const t = state.trucks.find(x => x.id === id);
   $('#selectedTitle').textContent = t ? `Telemetría — ${t.plates ?? id}` : 'Telemetría';
   $('#killTruckLabel').textContent = t ? (t.plates ?? id) : 'esta unidad';
+  if(state.marker){
+    state.map.removeLayer(state.marker);
+    state.marker = null;
+  }
   updateKillButtons();
   renderTruckList();
   refreshSelected();
@@ -294,10 +327,10 @@ async function refreshSelected(){
     if(reading.latitude != null && reading.longitude != null){
       if(!state.marker){
         state.marker = L.marker([reading.latitude, reading.longitude]).addTo(state.map);
+        state.map.setView([reading.latitude, reading.longitude], 13);
       }else{
         state.marker.setLatLng([reading.latitude, reading.longitude]);
       }
-      state.map.setView([reading.latitude, reading.longitude], 13);
     }
     setStatus(true);
   }catch(err){
@@ -357,55 +390,191 @@ function renderTrips(){
   });
 }
 
-function selectTrip(tripId){
-  $('#tripIdInput').value = tripId;
-  searchCartaPorte();
+async function loadDrivers(){
+  try{
+    const data = await api(CONFIG.endpoints.drivers());
+    state.drivers = Array.isArray(data) ? data : (data.items ?? []);
+    renderTripSelectOptions();
+  }catch(err){
+    // silencioso: el panel ya avisa si la API está caída
+  }
 }
 
-function renderCartaPorte(cp){
-  $('#cartaPorteBox').innerHTML = `
-    <table>
-      <tbody>
-        <tr><th>Folio</th><td class="mono">${cp.folio ?? '—'}</td></tr>
-        <tr><th>Mercancía</th><td>${cp.merchandise_description ?? '—'}</td></tr>
-        <tr><th>Peso (kg)</th><td class="mono">${cp.weight_kg ?? '—'}</td></tr>
-        <tr><th>Config. transporte</th><td class="mono">${cp.transport_config ?? '—'}</td></tr>
-        <tr><th>ID viaje</th><td class="mono">${cp.trip_id ?? '—'}</td></tr>
-      </tbody>
-    </table>
-  `;
+function renderTripSelectOptions(){
+  const truckSel = $('#newTripTruck');
+  const driverSel = $('#newTripDriver');
+  truckSel.innerHTML = '<option value="">Selecciona un camión…</option>' +
+    state.trucks.map(t => `<option value="${t.id}">${t.plates ?? t.id}</option>`).join('');
+  driverSel.innerHTML = '<option value="">Selecciona un conductor…</option>' +
+    state.drivers.map(d => `<option value="${d.id}">${d.name ?? d.id}</option>`).join('');
 }
 
-async function searchCartaPorte(){
-  const tripId = $('#tripIdInput').value.trim();
-  if(!tripId){
-    toast('Ingresa el ID de un viaje', true);
+async function createTruck(){
+  const plates = $('#newTruckPlates').value.trim();
+  const model = $('#newTruckModel').value.trim();
+  const capacityRaw = $('#newTruckCapacity').value;
+  if(!plates || !model){ toast('Placas y modelo son obligatorios', true); return; }
+
+  try{
+    await api('/trucks', {
+      method: 'POST',
+      body: JSON.stringify({
+        plates, model,
+        capacity_kg: capacityRaw === '' ? null : parseFloat(capacityRaw),
+      }),
+    });
+    toast(`Camión ${plates} creado.`);
+    $('#newTruckPlates').value = '';
+    $('#newTruckModel').value = '';
+    $('#newTruckCapacity').value = '';
+    loadTrucks();
+  }catch(err){
+    toast('No se pudo crear el camión: ' + err.message, true);
+  }
+}
+
+async function createDriver(){
+  const name = $('#newDriverName').value.trim();
+  const license = $('#newDriverLicense').value.trim();
+  const phone = $('#newDriverPhone').value.trim();
+  if(!name){ toast('El nombre es obligatorio', true); return; }
+
+  try{
+    await api('/drivers', {
+      method: 'POST',
+      body: JSON.stringify({
+        name,
+        license_number: license === '' ? null : license,
+        phone: phone === '' ? null : phone,
+      }),
+    });
+    toast(`Conductor ${name} creado.`);
+    $('#newDriverName').value = '';
+    $('#newDriverLicense').value = '';
+    $('#newDriverPhone').value = '';
+    loadDrivers();
+  }catch(err){
+    toast('No se pudo crear el conductor: ' + err.message, true);
+  }
+}
+
+async function createTrip(){
+  const truck_id = $('#newTripTruck').value;
+  const driver_id = $('#newTripDriver').value;
+  const origin = $('#newTripOrigin').value.trim();
+  const destination = $('#newTripDestination').value.trim();
+  const cargo_description = $('#newTripCargo').value.trim();
+  if(!truck_id || !driver_id || !origin || !destination){
+    toast('Camión, conductor, origen y destino son obligatorios', true);
     return;
   }
+
   try{
-    const data = await api(CONFIG.endpoints.cartaPorte(tripId));
-    state.cartaPorte = data;
-    renderCartaPorte(data);
-    $('#cartaPorteDownloadBtn').disabled = false;
+    await api('/trips', {
+      method: 'POST',
+      body: JSON.stringify({
+        truck_id, driver_id, origin, destination,
+        cargo_description: cargo_description === '' ? null : cargo_description,
+      }),
+    });
+    toast(`Viaje ${origin} → ${destination} creado.`);
+    $('#newTripOrigin').value = '';
+    $('#newTripDestination').value = '';
+    $('#newTripCargo').value = '';
+    loadTrips();
   }catch(err){
-    state.cartaPorte = null;
-    $('#cartaPorteDownloadBtn').disabled = true;
-    $('#cartaPorteBox').innerHTML = '<div class="empty-state">No se encontró carta porte para ese viaje.</div>';
-    toast('No se pudo obtener la carta porte: ' + err.message, true);
+    toast('No se pudo crear el viaje: ' + err.message, true);
   }
 }
 
-function downloadCartaPorte(){
-  if(!state.cartaPorte) return;
-  const blob = new Blob([JSON.stringify(state.cartaPorte, null, 2)], {type: 'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `carta-porte-${state.cartaPorte.folio ?? state.cartaPorte.trip_id}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+async function geocode(place){
+  const query = `${place}, México`;
+  if(state.geocodeCache[query]) return state.geocodeCache[query];
+
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('geocodificación falló');
+  const results = await res.json();
+  if(!results.length) throw new Error(`no se encontró "${place}"`);
+
+  const coord = { lat: parseFloat(results[0].lat), lng: parseFloat(results[0].lon) };
+  state.geocodeCache[query] = coord;
+  return coord;
+}
+
+async function fetchWithRetry(url, retries = 1, delayMs = 800){
+  for(let i = 0; i <= retries; i++){
+    try{
+      const res = await fetch(url);
+      if(res.ok) return res;
+      if(i === retries) throw new Error(`HTTP ${res.status}`);
+    }catch(err){
+      if(i === retries) throw err;
+    }
+    await new Promise(r => setTimeout(r, delayMs));
+  }
+}
+
+function drawStraightLine(origin, destination){
+  const latlngs = [[origin.lat, origin.lng], [destination.lat, destination.lng]];
+  state.routeLayer = L.polyline(latlngs, {
+    color: '#f85149', weight: 3, opacity: 0.75, dashArray: '6 8',
+  }).addTo(state.map);
+  state.map.fitBounds(state.routeLayer.getBounds(), { padding: [30, 30] });
+}
+
+async function traceRoute(originText, destinationText){
+  if(state.routeLayer){
+    state.map.removeLayer(state.routeLayer);
+    state.routeLayer = null;
+  }
+  if(!originText || !destinationText) return;
+
+  let origin, destination;
+  try{
+    [origin, destination] = await Promise.all([geocode(originText), geocode(destinationText)]);
+  }catch(err){
+    toast('No se pudo geocodificar: ' + err.message, true);
+    return;
+  }
+
+  try{
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometry=geojson`;
+    const res = await fetchWithRetry(osrmUrl);
+    const data = await res.json();
+    if(!data.routes || !data.routes.length) throw new Error('sin ruta disponible');
+
+    const route = data.routes[0];
+    const latlngs = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+
+    state.routeLayer = L.polyline(latlngs, { color: '#3fb950', weight: 4, opacity: 0.85 }).addTo(state.map);
+    state.map.fitBounds(state.routeLayer.getBounds(), { padding: [30, 30] });
+
+    const km = (route.distance / 1000).toFixed(1);
+    const min = Math.round(route.duration / 60);
+    toast(`Ruta trazada: ${originText} → ${destinationText} (${km} km, ~${min} min)`);
+  }catch(err){
+    // El servicio público de OSRM no garantiza disponibilidad — si falla,
+    // mostramos al menos una línea recta entre origen y destino.
+    drawStraightLine(origin, destination);
+    toast(`El servicio de rutas por carretera no respondió — se muestra línea recta aproximada.`, true);
+  }
+}
+
+function selectTrip(tripId){
+  const trip = state.trips.find(t => t.id === tripId);
+  if(trip) traceRoute(trip.origin, trip.destination);
+
+  state.selectedTripId = tripId;
+  $('#cartaPortePdfBtn').disabled = false;
+  $('#cartaPorteTripLabel').textContent = trip
+    ? `Viaje seleccionado: ${trip.origin} → ${trip.destination}`
+    : `Viaje seleccionado: ${tripId}`;
+}
+
+function downloadCartaPortePdf(){
+  if(!state.selectedTripId) return;
+  window.open(`${CONFIG.apiBase}/trips/${state.selectedTripId}/carta-porte/pdf`, '_blank');
 }
 
 function openKillModal(action){
@@ -449,16 +618,19 @@ function init(){
     localStorage.setItem('flotatrack_api_base', CONFIG.apiBase);
     loadTrucks();
   };
-  $('#refreshBtn').onclick = () => { loadTrucks(); loadTrips(); refreshSelected(); };
+  $('#refreshBtn').onclick = () => { loadTrucks(); loadTrips(); loadDrivers(); refreshSelected(); };
   $('#lockBtn').onclick = () => openKillModal('lock');
   $('#unlockBtn').onclick = () => openKillModal('unlock');
   $('#killCancel').onclick = closeKillModal;
   $('#killConfirm').onclick = confirmKillSwitch;
-  $('#cartaPorteSearchBtn').onclick = searchCartaPorte;
-  $('#cartaPorteDownloadBtn').onclick = downloadCartaPorte;
+  $('#createTruckBtn').onclick = createTruck;
+  $('#createDriverBtn').onclick = createDriver;
+  $('#createTripBtn').onclick = createTrip;
+  $('#cartaPortePdfBtn').onclick = downloadCartaPortePdf;
 
   loadTrucks();
   loadTrips();
+  loadDrivers();
   startPolling();
 }
 
