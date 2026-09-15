@@ -6,3 +6,4 @@ psycopg2-binary==2.9.13
 pydantic>=2.12
 pydantic-settings>=2.7
 python-dotenv==1.0.1
+reportlab==5.0.1

@@ -1,2 +1,13 @@
-# AI_LOG
-## Bitacora del uso de la IA
+# AI_LOG — FlotaTrack-EDSIA
+| Fecha | Tarea | Instrucción dada a la IA | Herramienta | Resultado obtenido | Validación humana |
+|---|---|---|---|---|---|
+| 2026-09-8 | Diseño de arquitectura del sistema | Definir cómo integrar nivel de gasolina, ubicación en tiempo real, kill switch y carta porte | Claude  | Diagrama de arquitectura (Panel web → Backend FastAPI → Unidad/vehículo con sensores y control) y guía técnica por función | Revisado por el equipo; se adoptó mantener la seguridad de que no se activara el kill switch si el vehiculo no se detenía por completo. |
+| 2026-09-10 | Revisión de avance y priorización | Compartir el repositorio del proyecto para evaluar qué faltaba antes del cierre | Claude  | Backlog priorizado: endpoints driver/trip, firmware ESP32, dashboard web, autenticación del kill switch | la IA recomendó seguir una rubrica muy parecida a la que se había establecido con anterioridad así que se adapto y se acoplo a lo antes establecido.   |
+| 2026-09-12 | Construcción del dashboard web | Generar un panel mínimo con mapa en vivo, control de kill switch e historial | Claude  | Archivo `index.html` (mapa Leaflet, panel de telemetría, botón de kill switch con confirmación, tabla de historial) | se acepto pero con modificaciones ya que se encontraron varios errores que impedían el optimo funcionamiento. |
+| 2026-09-12 | Guía de despliegue del panel | Consulta sobre como utilizar `index.html` | Claude  | Instrucciones para montarlo como archivo estático dentro de FastAPI (`StaticFiles`) o abrirlo localmente  | se tomo ya que eran instrucciones detalladas y funcionales para el optimo funcionamiento del front |
+| 2026-09-15 | Corrección del trazado de rutas en el mapa | Evaluar por qué fallaba el trazado con el servidor público de OSRM y qué alternativas de ruteo usar (OpenRouteService, HERE, TomTom, GraphHopper) | Claude | Diagnóstico: la falla venía del servidor demo público de OSRM, no apto para producción. Recomendación de OpenRouteService (perfil `driving-hgv`) frente a TomTom, GraphHopper (uso no comercial) y HERE (ahora requiere tarjeta) | Apoyo para entender la razon por la que la API de trazado de rutas no funcionaba  |
+| 2026-09-15 | Arquitectura de la integración con OpenRouteService | Consulta sobre si la API key de ORS debía quedar visible en el frontend o pasar por el backend, y qué riesgos implica cada opción | Claude | Recomendación de proxiar las solicitudes por el backend FastAPI (`/trips/{trip_id}/route`) usando la key como variable de entorno; boceto de endpoint FastAPI y ajuste de `traceRoute()` en el frontend | Se descarto la idea de implementar esa Api por falta de tiempo, pero se añadirá en un futuro  |
+ 
+---
+ 
+

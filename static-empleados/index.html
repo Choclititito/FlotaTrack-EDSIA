@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlotaTrack — Captura de Carta Porte</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel-2:#0d1117; --border:#30363d;
+    --text:#e6edf3; --text-muted:#8b949e; --accent:#2ea043; --accent-2:#3fb950;
+    --danger:#f85149; --mono: ui-monospace, "SF Mono", Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:-apple-system, system-ui, sans-serif;}
+  header{padding:16px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;}
+  header h1{font-size:17px; margin:0;}
+  .container{max-width:900px; margin:0 auto; padding:24px;}
+  .panel{background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:16px;}
+  .panel h2{font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); margin:0 0 14px;}
+  label{display:block; font-size:12px; color:var(--text-muted); margin-bottom:4px;}
+  input, select{
+    width:100%; background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+    padding:8px 10px; border-radius:8px; font-size:13px; font-family:inherit;
+  }
+  input[type="checkbox"]{width:auto;}
+  .field{margin-bottom:12px;}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;}
+  .btn{background:transparent; border:1px solid var(--border); color:var(--text); padding:9px 16px; border-radius:8px; font-size:13px; cursor:pointer;}
+  .btn:hover{border-color:var(--text-muted);}
+  .btn-accent{border-color:var(--accent); color:var(--accent-2);}
+  .btn-accent:hover{background:rgba(46,160,67,.1);}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+  .checkbox-row{display:flex; align-items:center; gap:8px; margin-bottom:12px;}
+  .checkbox-row label{margin:0;}
+  #loginScreen{display:flex; align-items:center; justify-content:center; min-height:100vh;}
+  #loginBox{width:100%; max-width:340px;}
+  #loginError{color:var(--danger); font-size:13px; margin-top:8px; min-height:16px;}
+  #toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--panel); border:1px solid var(--border); padding:10px 18px; border-radius:8px; font-size:13px; opacity:0; pointer-events:none; transition:opacity .2s; z-index:100;}
+  #toast.show{opacity:1;}
+  #toast.error{border-color:var(--danger); color:var(--danger);}
+  .hint{font-size:11px; color:var(--text-muted); margin-top:-6px; margin-bottom:12px;}
+  .api-row{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .api-row input{flex:1; min-width:200px; font-family:var(--mono);}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div id="loginBox" class="panel">
+    <h2>FlotaTrack — acceso de empleados</h2>
+    <div class="field">
+      <label>Usuario</label>
+      <input id="loginUser" type="text" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input id="loginPass" type="password" autocomplete="current-password">
+    </div>
+    <button class="btn btn-accent" id="loginBtn" style="width:100%;">Entrar</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<div id="appScreen" style="display:none;">
+  <header>
+    <h1>FlotaTrack — Captura de Carta Porte</h1>
+    <button class="btn" id="logoutBtn">Cerrar sesión</button>
+  </header>
+
+  <div class="container">
+
+    <div class="panel">
+      <div class="api-row">
+        <input id="apiBaseInput" type="text" placeholder="https://flotatrack-edsia.onrender.com">
+        <button class="btn" id="connectBtn">Conectar</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Viaje</h2>
+      <select id="tripSelect"></select>
+      <div class="hint">Si el viaje ya tiene carta porte registrada, se carga automáticamente para editarla.</div>
+    </div>
+
+    <form id="cartaPorteForm">
+
+      <div class="panel">
+        <h2>Datos fiscales generales</h2>
+        <div class="grid">
+          <div class="field"><label>Folio</label><input id="folio" required></div>
+          <div class="field"><label>RFC emisor</label><input id="emisor_rfc" required></div>
+          <div class="field"><label>RFC receptor</label><input id="receptor_rfc" required></div>
+          <div class="field"><label>Tipo de CFDI</label>
+            <select id="tipo_cfdi" required>
+              <option value="Traslado">Traslado</option>
+              <option value="Ingreso">Ingreso</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Ubicación de origen</h2>
+        <div class="grid">
+          <div class="field"><label>Clave (OR...)</label><input id="origen_clave" required></div>
+          <div class="field"><label>Calle</label><input id="origen_calle" required></div>
+          <div class="field"><label>Núm. exterior</label><input id="origen_numero_exterior"></div>
+          <div class="field"><label>Núm. interior</label><input id="origen_numero_interior"></div>
+          <div class="field"><label>Colonia</label><input id="origen_colonia" required></div>
+          <div class="field"><label>Localidad</label><input id="origen_localidad"></div>
+          <div class="field"><label>Municipio</label><input id="origen_municipio" required></div>
+          <div class="field"><label>Estado</label><input id="origen_estado" required></div>
+          <div class="field"><label>País</label><input id="origen_pais" value="México" required></div>
+          <div class="field"><label>Código postal</label><input id="origen_codigo_postal" required></div>
+          <div class="field"><label>Fecha y hora de salida</label><input id="origen_fecha_hora_salida" type="datetime-local" required></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Ubicación de destino</h2>
+        <div class="grid">
+          <div class="field"><label>Clave (DE...)</label><input id="destino_clave" required></div>
+          <div class="field"><label>Calle</label><input id="destino_calle" required></div>
+          <div class="field"><label>Núm. exterior</label><input id="destino_numero_exterior"></div>
+          <div class="field"><label>Núm. interior</label><input id="destino_numero_interior"></div>
+          <div class="field"><label>Colonia</label><input id="destino_colonia" required></div>
+          <div class="field"><label>Localidad</label><input id="destino_localidad"></div>
+          <div class="field"><label>Municipio</label><input id="destino_municipio" required></div>
+          <div class="field"><label>Estado</label><input id="destino_estado" required></div>
+          <div class="field"><label>País</label><input id="destino_pais" value="México" required></div>
+          <div class="field"><label>Código postal</label><input id="destino_codigo_postal" required></div>
+          <div class="field"><label>Fecha y hora de llegada</label><input id="destino_fecha_hora_llegada" type="datetime-local" required></div>
+          <div class="field"><label>Distancia recorrida (km)</label><input id="distancia_recorrida_km" type="number" step="0.1" min="0" required></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Mercancía</h2>
+        <div class="grid">
+          <div class="field"><label>Clave prod./servicio (SAT)</label><input id="mercancia_clave_prod_serv" required></div>
+          <div class="field"><label>Descripción</label><input id="merchandise_description" required></div>
+          <div class="field"><label>Peso bruto (kg)</label><input id="mercancia_peso_bruto_kg" type="number" step="0.01" min="0" required></div>
+          <div class="field"><label>Peso neto (kg)</label><input id="mercancia_peso_neto_kg" type="number" step="0.01" min="0" required></div>
+          <div class="field"><label>Clave de unidad</label><input id="mercancia_clave_unidad" required></div>
+        </div>
+        <div class="checkbox-row">
+          <input id="material_peligroso" type="checkbox">
+          <label>Es material peligroso</label>
+        </div>
+        <div class="field"><label>Tipo de embalaje (si aplica)</label><input id="mercancia_embalaje"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Medio de transporte</h2>
+        <div class="grid">
+          <div class="field"><label>Tipo de transporte</label>
+            <select id="tipo_transporte" required>
+              <option value="Terrestre">Terrestre</option>
+              <option value="Aéreo">Aéreo</option>
+              <option value="Marítimo">Marítimo</option>
+              <option value="Ferroviario">Ferroviario</option>
+            </select>
+          </div>
+          <div class="field"><label>Configuración vehicular</label><input id="config_vehicular" required></div>
+          <div class="field"><label>Placa del camión</label><input id="placa_camion" required></div>
+          <div class="field"><label>Placa del remolque</label><input id="placa_remolque"></div>
+          <div class="field"><label>Núm. de permiso SICT</label><input id="numero_permiso_sict" required></div>
+          <div class="field"><label>Aseguradora</label><input id="aseguradora_nombre" required></div>
+          <div class="field"><label>Núm. de póliza</label><input id="poliza_numero" required></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Figura de transporte (operador)</h2>
+        <div class="grid">
+          <div class="field"><label>Nombre</label><input id="operador_nombre" required></div>
+          <div class="field"><label>RFC</label><input id="operador_rfc" required></div>
+          <div class="field"><label>Licencia</label><input id="operador_licencia" required></div>
+          <div class="field"><label>Domicilio</label><input id="operador_domicilio" required></div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-accent" style="width:100%; padding:12px;">Guardar carta porte</button>
+    </form>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+
+const CONFIG = {
+  apiBase: localStorage.getItem('flotatrack_api_base') || window.location.origin,
+};
+
+const state = { auth: null, trips: [] };
+
+const TEXT_FIELDS = ['folio','emisor_rfc','receptor_rfc','origen_clave','origen_calle','origen_numero_exterior',
+  'origen_numero_interior','origen_colonia','origen_localidad','origen_municipio','origen_estado','origen_pais',
+  'origen_codigo_postal','destino_clave','destino_calle','destino_numero_exterior','destino_numero_interior',
+  'destino_colonia','destino_localidad','destino_municipio','destino_estado','destino_pais','destino_codigo_postal',
+  'mercancia_clave_prod_serv','merchandise_description','mercancia_clave_unidad','mercancia_embalaje',
+  'config_vehicular','placa_camion','placa_remolque','numero_permiso_sict','aseguradora_nombre','poliza_numero',
+  'operador_nombre','operador_rfc','operador_licencia','operador_domicilio'];
+const SELECT_FIELDS = ['tipo_cfdi','tipo_transporte'];
+const NUMBER_FIELDS = ['distancia_recorrida_km','mercancia_peso_bruto_kg','mercancia_peso_neto_kg'];
+const DATETIME_FIELDS = ['origen_fecha_hora_salida','destino_fecha_hora_llegada'];
+const CHECKBOX_FIELDS = ['material_peligroso'];
+
+function toast(msg, isError){
+  const el = $('#toast');
+  el.textContent = msg;
+  el.className = isError ? 'show error' : 'show';
+  setTimeout(() => { el.className = ''; }, 3500);
+}
+
+async function apiCall(path, { method = 'GET', body, auth = false } = {}){
+  const headers = { 'Content-Type': 'application/json' };
+  if(auth && state.auth){
+    headers['Authorization'] = 'Basic ' + btoa(`${state.auth.username}:${state.auth.password}`);
+  }
+  const res = await fetch(CONFIG.apiBase + path, { method, headers, body });
+  if(!res.ok){
+    let detail = res.statusText;
+    try{ const data = await res.json(); detail = data.detail ?? JSON.stringify(data); }catch(_){}
+    throw new Error(`${res.status}: ${detail}`);
+  }
+  if(res.status === 204) return null;
+  return res.json();
+}
+
+function showLoginError(msg){ $('#loginError').textContent = msg; }
+
+async function login(){
+  const username = $('#loginUser').value.trim();
+  const password = $('#loginPass').value;
+  showLoginError('');
+  if(!username || !password){ showLoginError('Ingresa usuario y contraseña'); return; }
+
+  state.auth = { username, password };
+  try{
+    await apiCall('/auth/check', { auth: true });
+    sessionStorage.setItem('flotatrack_employee_auth', JSON.stringify(state.auth));
+    showApp();
+  }catch(err){
+    state.auth = null;
+    showLoginError('Usuario o contraseña incorrectos.');
+  }
+}
+
+function logout(){
+  state.auth = null;
+  sessionStorage.removeItem('flotatrack_employee_auth');
+  $('#appScreen').style.display = 'none';
+  $('#loginScreen').style.display = 'flex';
+  $('#loginPass').value = '';
+}
+
+function showApp(){
+  $('#loginScreen').style.display = 'none';
+  $('#appScreen').style.display = 'block';
+  $('#apiBaseInput').value = CONFIG.apiBase;
+  loadTrips();
+}
+
+async function loadTrips(){
+  try{
+    const trips = await apiCall('/trips');
+    state.trips = Array.isArray(trips) ? trips : (trips.items ?? []);
+    renderTripOptions();
+  }catch(err){
+    toast('No se pudieron cargar los viajes: ' + err.message, true);
+  }
+}
+
+function renderTripOptions(){
+  const sel = $('#tripSelect');
+  sel.innerHTML = '<option value="">Selecciona un viaje…</option>' + state.trips.map(t => {
+    const fecha = t.started_at ? new Date(t.started_at).toLocaleDateString('es-MX') : '—';
+    return `<option value="${t.id}">${t.origin ?? '—'} → ${t.destination ?? '—'} (${fecha})</option>`;
+  }).join('');
+}
+
+function resetForm(){
+  $('#cartaPorteForm').reset();
+  $('#origen_pais').value = 'México';
+  $('#destino_pais').value = 'México';
+}
+
+function fillForm(cp){
+  [...TEXT_FIELDS, ...SELECT_FIELDS].forEach(id => { if(cp[id] != null) $('#' + id).value = cp[id]; });
+  NUMBER_FIELDS.forEach(id => { if(cp[id] != null) $('#' + id).value = cp[id]; });
+  DATETIME_FIELDS.forEach(id => { if(cp[id]) $('#' + id).value = cp[id].slice(0, 16); });
+  CHECKBOX_FIELDS.forEach(id => { $('#' + id).checked = !!cp[id]; });
+}
+
+async function onTripChange(){
+  const tripId = $('#tripSelect').value;
+  resetForm();
+  if(!tripId) return;
+  try{
+    const cp = await apiCall(`/trips/${tripId}/carta-porte`);
+    fillForm(cp);
+    toast('Este viaje ya tenía carta porte registrada — se cargó para editar.');
+  }catch(err){
+    // 404 es lo normal: viaje todavía sin carta porte
+  }
+}
+
+function collectFormData(){
+  const data = {};
+  [...TEXT_FIELDS, ...SELECT_FIELDS].forEach(id => {
+    const val = $('#' + id).value.trim();
+    data[id] = val === '' ? null : val;
+  });
+  NUMBER_FIELDS.forEach(id => {
+    const val = $('#' + id).value;
+    data[id] = val === '' ? null : parseFloat(val);
+  });
+  DATETIME_FIELDS.forEach(id => {
+    const val = $('#' + id).value;
+    data[id] = val === '' ? null : val;
+  });
+  CHECKBOX_FIELDS.forEach(id => {
+    data[id] = $('#' + id).checked;
+  });
+  return data;
+}
+
+async function submitForm(e){
+  e.preventDefault();
+  const tripId = $('#tripSelect').value;
+  if(!tripId){ toast('Selecciona un viaje primero', true); return; }
+  if(!state.auth){ toast('Tu sesión expiró, vuelve a iniciar sesión.', true); logout(); return; }
+
+  const payload = collectFormData();
+  try{
+    await apiCall(`/trips/${tripId}/carta-porte`, { method: 'POST', body: JSON.stringify(payload), auth: true });
+    toast('Carta porte guardada correctamente.');
+  }catch(err){
+    if(err.message.startsWith('401')){
+      toast('Tu sesión ya no es válida, vuelve a iniciar sesión.', true);
+      logout();
+    }else{
+      toast('No se pudo guardar: ' + err.message, true);
+    }
+  }
+}
+
+function init(){
+  const saved = sessionStorage.getItem('flotatrack_employee_auth');
+  if(saved){
+    state.auth = JSON.parse(saved);
+    showApp();
+  }
+
+  $('#loginBtn').onclick = login;
+  $('#loginPass').addEventListener('keydown', (e) => { if(e.key === 'Enter') login(); });
+  $('#logoutBtn').onclick = logout;
+  $('#connectBtn').onclick = () => {
+    CONFIG.apiBase = $('#apiBaseInput').value.trim().replace(/\/$/, '');
+    localStorage.setItem('flotatrack_api_base', CONFIG.apiBase);
+    loadTrips();
+  };
+  $('#tripSelect').onchange = onTripChange;
+  $('#cartaPorteForm').onsubmit = submitForm;
+}
+
+init();
+</script>
+</body>
+</html>

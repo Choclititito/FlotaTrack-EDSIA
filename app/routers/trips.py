@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 
 from app import models, schemas
 from app.database import get_db
+from app.pdf_carta_porte import generate_carta_porte_pdf
+from app.security import require_employee_auth
 
 router = APIRouter(prefix="/trips", tags=["trips"])
 
@@ -49,13 +51,15 @@ def upsert_carta_porte(
     payload: schemas.CartaPorteCreate,
     response: Response,
     db: Session = Depends(get_db),
+    _employee: str = Depends(require_employee_auth),
 ) -> models.CartaPorteRecord:
     """Crea o actualiza el registro de carta porte de un viaje.
 
-    Es un registro interno del sistema (folio, mercancía, peso, config. de
-    transporte) — NO es el CFDI de Carta Porte timbrado ante el SAT, eso queda
-    fuera de alcance del reto. Un viaje solo tiene un registro de carta porte,
-    así que si ya existía se actualiza (200) en vez de duplicarse (201).
+    Es un registro interno del sistema (datos fiscales, ubicaciones,
+    mercancía, medio de transporte y figura de transporte) — NO es el CFDI de
+    Carta Porte timbrado ante el SAT, eso queda fuera de alcance del reto. Un
+    viaje solo tiene un registro de carta porte, así que si ya existía se
+    actualiza (200) en vez de duplicarse (201).
     """
     trip = db.get(models.Trip, trip_id)
     if trip is None:
@@ -74,10 +78,8 @@ def upsert_carta_porte(
     else:
         response.status_code = 200
 
-    record.folio = payload.folio  # type: ignore[assignment]
-    record.merchandise_description = payload.merchandise_description  # type: ignore[assignment]
-    record.weight_kg = payload.weight_kg  # type: ignore[assignment]
-    record.transport_config = payload.transport_config  # type: ignore[assignment]
+    for field, value in payload.model_dump().items():
+        setattr(record, field, value)
 
     db.commit()
     db.refresh(record)
@@ -99,3 +101,25 @@ def get_carta_porte(trip_id: str, db: Session = Depends(get_db)) -> models.Carta
         raise HTTPException(status_code=404, detail="Carta porte not registered for this trip")
     return record
 
+
+@router.get("/{trip_id}/carta-porte/pdf")
+def download_carta_porte_pdf(trip_id: str, db: Session = Depends(get_db)) -> Response:
+    """Genera y descarga el PDF de la carta porte en el formato tradicional impreso."""
+    trip = db.get(models.Trip, trip_id)
+    if trip is None:
+        raise HTTPException(status_code=404, detail="Trip not found")
+
+    record = (
+        db.query(models.CartaPorteRecord)
+        .filter(models.CartaPorteRecord.trip_id == trip_id)
+        .first()
+    )
+    if record is None:
+        raise HTTPException(status_code=404, detail="Carta porte not registered for this trip")
+
+    pdf_bytes = generate_carta_porte_pdf(record, trip)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="carta-porte-{record.folio}.pdf"'},
+    )

@@ -1,4 +1,5 @@
 import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -66,8 +67,8 @@ class DriverCreate(BaseModel):
 
 class DriverOut(BaseModel):
     id: str
-    name: str
     license_number: str | None = None
+    name: str
     phone: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -96,17 +97,67 @@ class TripOut(BaseModel):
 
 class CartaPorteCreate(BaseModel):
     folio: str
+
+    # --- Datos fiscales generales ---
+    emisor_rfc: str
+    receptor_rfc: str
+    tipo_cfdi: Literal["Ingreso", "Traslado"] = "Traslado"
+
+    # --- Ubicación de origen ---
+    origen_clave: str
+    origen_calle: str
+    origen_numero_exterior: str | None = None
+    origen_numero_interior: str | None = None
+    origen_colonia: str
+    origen_localidad: str | None = None
+    origen_municipio: str
+    origen_estado: str
+    origen_pais: str = "México"
+    origen_codigo_postal: str
+    origen_fecha_hora_salida: datetime.datetime
+
+    # --- Ubicación de destino ---
+    destino_clave: str
+    destino_calle: str
+    destino_numero_exterior: str | None = None
+    destino_numero_interior: str | None = None
+    destino_colonia: str
+    destino_localidad: str | None = None
+    destino_municipio: str
+    destino_estado: str
+    destino_pais: str = "México"
+    destino_codigo_postal: str
+    destino_fecha_hora_llegada: datetime.datetime
+
+    distancia_recorrida_km: float = Field(ge=0)
+
+    # --- Mercancía ---
+    mercancia_clave_prod_serv: str
     merchandise_description: str
-    weight_kg: float | None = None
-    transport_config: str | None = None
+    mercancia_peso_bruto_kg: float = Field(ge=0)
+    mercancia_peso_neto_kg: float = Field(ge=0)
+    mercancia_clave_unidad: str
+    material_peligroso: bool = False
+    mercancia_embalaje: str | None = None
+
+    # --- Datos del medio de transporte ---
+    tipo_transporte: Literal["Terrestre", "Aéreo", "Marítimo", "Ferroviario"] = "Terrestre"
+    config_vehicular: str
+    placa_camion: str
+    placa_remolque: str | None = None
+    numero_permiso_sict: str
+    aseguradora_nombre: str
+    poliza_numero: str
+
+    # --- Datos de la figura de transporte (operador) ---
+    operador_nombre: str
+    operador_rfc: str
+    operador_licencia: str
+    operador_domicilio: str
 
 
-class CartaPorteOut(BaseModel):
+class CartaPorteOut(CartaPorteCreate):
     id: str
     trip_id: str
-    folio: str
-    merchandise_description: str
-    weight_kg: float | None = None
-    transport_config: str | None = None
 
     model_config = ConfigDict(from_attributes=True)

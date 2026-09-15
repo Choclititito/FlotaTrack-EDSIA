@@ -11,6 +11,7 @@ from sqlalchemy.orm import sessionmaker  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 
 from app import models  # noqa: E402,F401
+from app.config import settings  # noqa: E402
 from app.database import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 
@@ -43,3 +44,9 @@ app.dependency_overrides[get_db] = _override_get_db
 @pytest.fixture
 def client():
     return TestClient(app)
+
+
+@pytest.fixture
+def employee_auth() -> tuple[str, str]:
+    """Credenciales HTTP Basic para endpoints protegidos con require_employee_auth."""
+    return (settings.employee_username, settings.employee_password)
