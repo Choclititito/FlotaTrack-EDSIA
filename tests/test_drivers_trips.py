@@ -1,5 +1,5 @@
 def _carta_porte_payload(**overrides):
-    """Payload válido para CartaPorteCreate; usar overrides para variar solo lo que le importa a cada test."""
+    """ válido para CartaPorteCreate;usar para variar solo lo que le importa a cada test."""
     payload = {
         "folio": "CP-0001",
         "emisor_rfc": "AAA010101AAA",

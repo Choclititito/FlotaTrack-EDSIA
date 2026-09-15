@@ -68,7 +68,8 @@ def generate_carta_porte_pdf(record, trip) -> bytes:
     y -= 13
     label_value(
         left, y, "Lugar y fecha de expedición: ",
-        f"{record.origen_municipio}, {record.origen_estado} — {_fmt_dt(record.origen_fecha_hora_salida)}",
+        f"{record.origen_municipio}, {record.origen_estado} — "
+        f"{_fmt_dt(record.origen_fecha_hora_salida)}",
     )
 
     # --- Origen / Destino ---
@@ -107,7 +108,9 @@ def generate_carta_porte_pdf(record, trip) -> bytes:
     box_h = 52
     c.rect(left, y - box_h, right - left, box_h)
     c.setFont("Helvetica", 8)
-    c.drawString(left + 4, y - 12, f"Clave prod./servicio (SAT): {record.mercancia_clave_prod_serv}")
+    c.drawString( left + 4, y - 12, 
+        f"Clave prod./servicio (SAT): {record.mercancia_clave_prod_serv}"
+    )
     c.drawString(left + 4, y - 24, f"Descripción: {record.merchandise_description}")
     c.drawString(
         left + 4, y - 36,
@@ -129,13 +132,19 @@ def generate_carta_porte_pdf(record, trip) -> bytes:
     box_h = 52
     c.rect(left, y - box_h, right - left, box_h)
     c.setFont("Helvetica", 8)
-    c.drawString(left + 4, y - 12, f"Tipo: {record.tipo_transporte}    Config. vehicular: {record.config_vehicular}")
+    c.drawString( left + 4, y - 12, 
+        f"Tipo: {record.tipo_transporte}    "
+        f"Config. vehicular: {record.config_vehicular}"
+    )
     c.drawString(
         left + 4, y - 24,
         f"Placa camión: {record.placa_camion}    Placa remolque: {record.placa_remolque or '—'}",
     )
     c.drawString(left + 4, y - 36, f"Permiso SICT: {record.numero_permiso_sict}")
-    c.drawString(left + 4, y - 48, f"Aseguradora: {record.aseguradora_nombre}    Póliza: {record.poliza_numero}")
+    c.drawString( left + 4, y - 48, 
+        f"Aseguradora: {record.aseguradora_nombre}    "
+        f"Póliza: {record.poliza_numero}"
+    )
 
     # --- Figura de transporte (operador) ---
     y -= box_h + 18
@@ -145,7 +154,9 @@ def generate_carta_porte_pdf(record, trip) -> bytes:
     box_h = 40
     c.rect(left, y - box_h, right - left, box_h)
     c.setFont("Helvetica", 8)
-    c.drawString(left + 4, y - 12, f"Nombre: {record.operador_nombre}    RFC: {record.operador_rfc}")
+    c.drawString( left + 4, y - 12, 
+        f"Nombre: {record.operador_nombre}    RFC: {record.operador_rfc}"
+    )
     c.drawString(left + 4, y - 24, f"Licencia: {record.operador_licencia}")
     for i, chunk in enumerate(_wrap_text(f"Domicilio: {record.operador_domicilio}", 95)[:1]):
         c.drawString(left + 4, y - 36, chunk)
@@ -154,12 +165,14 @@ def generate_carta_porte_pdf(record, trip) -> bytes:
     y -= box_h + 40
     c.line(left, y, left + 220, y)
     c.setFont("Helvetica", 8)
-    c.drawString(left, y - 10, "Recibí de conformidad (nombre y firma del destinatario o persona autorizada)")
+    c.drawString( left, y - 10, 
+        "Recibí de conformidad (nombre y firma del destinatario o persona autorizada)"
+    )
 
     c.setFont("Helvetica-Oblique", 6.5)
     c.drawString(
         left, 15 * mm,
-        "Documento generado por FlotaTrack — registro interno, no es el CFDI de Carta Porte timbrado ante el SAT.",
+        "Documento generado — registro interno, no es el CFDI de Carta Porte timbrado ante el SAT.",
     )
 
     c.showPage()
