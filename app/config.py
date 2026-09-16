@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     # Credenciales compartidas para el front de captura de carta porte (empleados).
     # SIEMPRE sobreescribir esto por variables de entorno reales en producción.
     employee_username: str = "empleado"
-    employee_password: str = "cambia-esta-clave"
+    employee_password: str = "test_1"
  
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
  

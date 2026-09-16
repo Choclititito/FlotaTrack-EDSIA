@@ -5,6 +5,9 @@ https://flotatrack-edsia.onrender.com/panel/
 Empleados 
 https://flotatrack-edsia.onrender.com/empleados/
 
+Usuario: empleado
+
+contraseña : test_1
 Docs
 https://flotatrack-edsia.onrender.com/docs
 
