@@ -1,7 +1,8 @@
-from machine import UART, Pin
+import time
+
 import network
 import urequests
-import time
+from machine import UART, Pin
 
 # ============================================================
 # CONFIGURACION - AJUSTA ESTOS VALORES
@@ -325,7 +326,7 @@ def enviar_lectura(lat, lon, velocidad, combustible):
     """
     global ultimo_command_id_pendiente
 
-    url = "{}/devices/{}/telemetry".format(API_URL_BASE, TRUCK_ID)
+    url = f"{API_URL_BASE}/devices/{TRUCK_ID}/telemetry"
 
     payload = {
         "latitude": lat,
