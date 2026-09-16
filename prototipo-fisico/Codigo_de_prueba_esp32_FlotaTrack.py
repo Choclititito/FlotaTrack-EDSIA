@@ -25,15 +25,15 @@ INTERVALO_ENVIO = 15  # segundos entre cada envio al backend
 # - con el tanque vacio, cuanto marca el sensor
 # - con el tanque lleno, cuanto marca el sensor
 # El calculo de porcentaje interpola linealmente entre estos dos extremos.
-DISTANCIA_TANQUE_VACIO = 40.0   # cm cuando el tanque esta vacio
-DISTANCIA_TANQUE_LLENO = 5.0    # cm cuando el tanque esta lleno
+DISTANCIA_TANQUE_VACIO = 40.0  # cm cuando el tanque esta vacio
+DISTANCIA_TANQUE_LLENO = 5.0  # cm cuando el tanque esta lleno
 
 # Pines fisicos del ESP32 usados por cada periferico
-PIN_GPS_RX = 16   # pin del ESP32 que RECIBE datos (se conecta al TX del GPS)
-PIN_GPS_TX = 17   # pin del ESP32 que TRANSMITE datos (se conecta al RX del GPS)
-PIN_TRIG = 5      # pin de disparo del sensor ultrasonico (salida)
-PIN_ECHO = 18     # pin de eco del sensor ultrasonico (entrada)
-PIN_LED = 4       # LED indicador: encendido = motor deshabilitado (kill switch activo)
+PIN_GPS_RX = 16  # pin del ESP32 que RECIBE datos (se conecta al TX del GPS)
+PIN_GPS_TX = 17  # pin del ESP32 que TRANSMITE datos (se conecta al RX del GPS)
+PIN_TRIG = 5  # pin de disparo del sensor ultrasonico (salida)
+PIN_ECHO = 18  # pin de eco del sensor ultrasonico (entrada)
+PIN_LED = 4  # LED indicador: encendido = motor deshabilitado (kill switch activo)
 
 # ============================================================
 # INICIALIZACION DE PERIFERICOS
@@ -46,7 +46,7 @@ PIN_LED = 4       # LED indicador: encendido = motor deshabilitado (kill switch 
 gps = UART(2, baudrate=9600, tx=PIN_GPS_TX, rx=PIN_GPS_RX)
 
 trig = Pin(PIN_TRIG, Pin.OUT)  # el ESP32 envia el pulso de disparo
-echo = Pin(PIN_ECHO, Pin.IN)   # el ESP32 escucha cuanto tarda en volver el eco
+echo = Pin(PIN_ECHO, Pin.IN)  # el ESP32 escucha cuanto tarda en volver el eco
 
 led = Pin(PIN_LED, Pin.OUT)
 led.value(0)  # arranca apagado (motor habilitado) por seguridad al encender
@@ -55,6 +55,7 @@ led.value(0)  # arranca apagado (motor habilitado) por seguridad al encender
 # ============================================================
 # WIFI
 # ============================================================
+
 
 def conectar_wifi():
     """
@@ -98,6 +99,7 @@ def conectar_wifi():
 # ============================================================
 # SENSOR ULTRASONICO (NIVEL DE COMBUSTIBLE)
 # ============================================================
+
 
 def medir_distancia_cm():
     """
@@ -163,6 +165,7 @@ def calcular_porcentaje_combustible(distancia_cm):
 # Nota: aqui el LED reemplaza al rele fisico. La logica es invertida
 # respecto a "motor funcionando": LED encendido = motor deshabilitado.
 
+
 def activar_motor():
     """Motor habilitado (kill switch desactivado): LED apagado."""
     led.value(0)
@@ -179,16 +182,17 @@ def desactivar_motor():
 # GPS
 # ============================================================
 
+
 def convertir_a_decimal(valor_crudo, direccion):
     """
     Convierte una coordenada en formato NMEA crudo (grados y minutos
     pegados, ej. "1234.5678") a grados decimales (ej. 12.576...),
     aplicando el signo segun el hemisferio (N/S, E/W).
     """
-    if not valor_crudo or valor_crudo == '':
+    if not valor_crudo or valor_crudo == "":
         return None
 
-    if direccion in ('E', 'W'):
+    if direccion in ("E", "W"):
         # La longitud usa 3 digitos para los grados (hasta 180)
         grados = int(valor_crudo[:3])
         minutos = float(valor_crudo[3:])
@@ -200,7 +204,7 @@ def convertir_a_decimal(valor_crudo, direccion):
     decimal = grados + (minutos / 60)
 
     # Sur y Oeste son negativos en el sistema de coordenadas decimal estandar
-    if direccion in ('S', 'W'):
+    if direccion in ("S", "W"):
         decimal = -decimal
 
     return decimal
@@ -212,14 +216,14 @@ def parsear_gpgga(trama):
     una tupla (lat, lon) en decimal, o None si la trama es invalida o
     todavia no hay fix satelital.
     """
-    partes = trama.split(',')
+    partes = trama.split(",")
 
     if len(partes) < 10:
         return None  # trama incompleta/corrupta
 
     # El campo 6 indica la calidad del fix: '0' significa "sin fix" todavia
     fix_quality = partes[6]
-    if fix_quality == '0' or fix_quality == '':
+    if fix_quality == "0" or fix_quality == "":
         return None
 
     lat = convertir_a_decimal(partes[2], partes[3])
@@ -237,7 +241,7 @@ def parsear_gpvtg(trama):
     El campo de velocidad en km/h es el 8vo (indice 7), justo antes de la 'K'.
     Formato: $GPVTG,rumbo,T,,,vel_nudos,N,vel_kmh,K*checksum
     """
-    partes = trama.split(',')
+    partes = trama.split(",")
 
     if len(partes) < 8:
         return None
@@ -280,7 +284,7 @@ def actualizar_gps():
         datos = gps.read()
         if datos:
             try:
-                buffer_gps += datos.decode('utf-8', 'ignore')
+                buffer_gps += datos.decode("utf-8", "ignore")
             except Exception:
                 # Si llega algun byte corrupto/no-UTF8 se ignora en vez de
                 # tumbar el programa
@@ -289,19 +293,19 @@ def actualizar_gps():
     # Mientras haya al menos una linea completa en el buffer, se procesa.
     # split('\n', 1) separa la primera linea del resto, que se conserva
     # en buffer_gps para la siguiente vuelta.
-    while '\n' in buffer_gps:
-        linea, buffer_gps = buffer_gps.split('\n', 1)
+    while "\n" in buffer_gps:
+        linea, buffer_gps = buffer_gps.split("\n", 1)
         linea = linea.strip()
 
         if not linea:
             continue
 
-        if linea.startswith('$GPGGA') or linea.startswith('$GNGGA'):
+        if linea.startswith("$GPGGA") or linea.startswith("$GNGGA"):
             resultado = parsear_gpgga(linea)
             if resultado:
                 ultima_lat, ultima_lon = resultado
 
-        elif linea.startswith('$GPVTG') or linea.startswith('$GNVTG'):
+        elif linea.startswith("$GPVTG") or linea.startswith("$GNVTG"):
             velocidad = parsear_gpvtg(linea)
             if velocidad is not None:
                 # Por debajo de 5 km/h se considera ruido de precision del GPS
@@ -335,7 +339,7 @@ def enviar_lectura(lat, lon, velocidad, combustible):
         "fuel_level_pct": combustible,
         # Le avisa al backend cual fue el ultimo comando de kill switch que
         # ya se aplico, para que el backend pueda marcarlo como confirmado
-        "acknowledged_command_id": ultimo_command_id_pendiente
+        "acknowledged_command_id": ultimo_command_id_pendiente,
     }
 
     try:
@@ -346,7 +350,8 @@ def enviar_lectura(lat, lon, velocidad, combustible):
             print("Detalle del error:", respuesta.text)
 
         # El backend indica en la respuesta si hay un comando pendiente de
-        # kill switch: {"received": true, "pending_command": {"type": "lock"|"unlock", "command_id": "..."}}
+        # kill switch: {"received": true, "pending_command": {"type": "lock"|"unlock",
+        #  "command_id": "..."}}
         try:
             data = respuesta.json()
             pendiente = data.get("pending_command")
@@ -381,6 +386,7 @@ def enviar_lectura(lat, lon, velocidad, combustible):
 # PROGRAMA PRINCIPAL
 # ============================================================
 
+
 def main():
     # Si no hay WiFi no tiene sentido seguir: no se podria reportar nada
     if not conectar_wifi():
@@ -411,7 +417,18 @@ def main():
             else:
                 ultimo_combustible_valido = combustible
 
-            print("Lat:", ultima_lat, "Lon:", ultima_lon, "Vel:", ultima_velocidad, "km/h", "Combustible:", combustible, "%")
+            print(
+                "Lat:",
+                ultima_lat,
+                "Lon:",
+                ultima_lon,
+                "Vel:",
+                ultima_velocidad,
+                "km/h",
+                "Combustible:",
+                combustible,
+                "%",
+            )
 
             if ultima_lat is not None and ultima_lon is not None:
                 enviar_lectura(ultima_lat, ultima_lon, ultima_velocidad, combustible)
