@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     # Credenciales compartidas para el front de captura de carta porte (empleados).
     # SIEMPRE sobreescribir esto por variables de entorno reales en producción.
     employee_username: str = "empleado"
-    employee_password: str = "cambia-esta-clave"
+    employee_password: str = "test_1"
 
     # Umbral de "detenido" para el kill switch (ver ADR-0002): el backend solo
     # marca un comando como aplicado si la lectura reporta velocidad <= a esto.
