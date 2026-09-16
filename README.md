@@ -125,3 +125,6 @@ pytest --cov=app --cov-report=term-missing
 
 Las pruebas corren contra SQLite en memoria (ver `tests/conftest.py`, que usa `StaticPool` para compartir una sola
 conexión entre el fixture de setup y las peticiones HTTP), así no dependen de tener Postgres corriendo para el CI.
+
+## CI  
+[![CI](https://github.com/Choclititito/FlotaTrack-EDSIA/.github/workflows/ci.yml)](https://github.com/Choclititito/FlotaTrack-EDSIA/actions)
